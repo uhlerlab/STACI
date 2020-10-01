@@ -17,7 +17,7 @@ ref<-readRDS(file.path('/nfs','latdata','xinyi','mouse_hippocampus_reference.rds
 sobj<-list()
 
 sobj[['slideseq3000feature']]<-SCTransform(slide.seq, assay = "Spatial", ncells = 3000, verbose = FALSE,variable.features.n = 3000)
-sobj[['slideseq5000feature']]<-SCTransform(slide.seq, assay = "Spatial", ncells = 3000, verbose = FALSE,variable.features.n = 5000)
+# sobj[['slideseq5000feature']]<-SCTransform(slide.seq, assay = "Spatial", ncells = 3000, verbose = FALSE,variable.features.n = 5000)
 # sobj[['slide.seq_rv1.3']]<-SCTransform(slide.seq, assay = "Spatial", ncells = 3000, verbose = FALSE,variable.features.n = NULL,variable.features.rv.th = 1.3)
 
 for(sobj_i in names(sobj)){
