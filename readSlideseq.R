@@ -2,10 +2,10 @@ library(Seurat)
 library(deldir)
 library(ggplot2)
 
-datapath<-file.path('nfs','latdata','xinyi','slide_seq.rds')
-seuratsavepath<-file.path('nfs','latdata','xinyi','slideseq','seuratresults')
+datapath<-file.path('/nfs','latdata','xinyi','slide_seq.rds')
+seuratsavepath<-file.path('/nfs','latdata','xinyi','slideseq','seuratresults')
 slide.seq<-readRDS(datapath)
-ref<-readRDS(file.path('nfs','latdata','xinyi','mouse_hippocampus_reference.rds'))
+ref<-readRDS(file.path('/nfs','latdata','xinyi','mouse_hippocampus_reference.rds'))
 
 
 
