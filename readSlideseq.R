@@ -2,6 +2,10 @@ library(Seurat)
 library(deldir)
 library(ggplot2)
 library(reticulate)
+library(future)
+
+plan("multiprocess", workers = 8)
+options(future.globals.maxSize= 80000*1024^2)
 
 datapath<-file.path('/nfs','latdata','xinyi','slide_seq.rds')
 seuratsavepath<-file.path('/nfs','latdata','xinyi','slideseq','seuratresults')
