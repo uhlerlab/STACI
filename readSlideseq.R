@@ -16,9 +16,9 @@ ref<-readRDS(file.path('/nfs','latdata','xinyi','mouse_hippocampus_reference.rds
 
 sobj<-list()
 
-sobj[['slideseq3000feature']]<-SCTransform(slide.seq, assay = "Spatial", ncells = 3000, verbose = FALSE,variable.features.n = 3000)
-# sobj[['slideseq5000feature']]<-SCTransform(slide.seq, assay = "Spatial", ncells = 3000, verbose = FALSE,variable.features.n = 5000)
-# sobj[['slide.seq_rv1.3']]<-SCTransform(slide.seq, assay = "Spatial", ncells = 3000, verbose = FALSE,variable.features.n = NULL,variable.features.rv.th = 1.3)
+# sobj[['slideseq3000feature']]<-SCTransform(slide.seq, assay = "Spatial", ncells = 3000, verbose = FALSE,variable.features.n = 3000)
+sobj[['slideseq5000feature']]<-SCTransform(slide.seq, assay = "Spatial", ncells = 3000, verbose = FALSE,variable.features.n = 5000)
+sobj[['slide.seq_rv1.3']]<-SCTransform(slide.seq, assay = "Spatial", ncells = 3000, verbose = FALSE,variable.features.n = NULL,variable.features.rv.th = 1.3)
 
 for(sobj_i in names(sobj)){
   savedir<-file.path(seuratsavepath,sobj_i)
@@ -55,6 +55,7 @@ for(sobj_i in names(sobj)){
   saveRDS(varSpatialFeature,file.path(savedir,'varfeatures_spatial.rds'))
   write.csv(as.matrix(varSpatialFeature,ncol=1),file.path(savedir,'varfeatures_spatial.csv'))
   
-  ad <- Convert(from = sobj[[sobj_i]], to = "anndata", filename = file.path(savedir,paste0(sobj_i,'.h5ad')))
+  loom <- as.loom(sobj[[sobj_i]], filename = file.path(savedir,paste0(sobj_i,'.loom')))
+  loom$close_all()
 }
 
