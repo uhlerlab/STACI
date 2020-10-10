@@ -38,6 +38,7 @@ for(sobj_i in names(sobj)){
   predictions.assay <- TransferData(anchorset = anchors, refdata = ref$celltype, prediction.assay = TRUE, 
                                     weight.reduction = sobj[[sobj_i]][["pca"]], dims = 1:50)
   sobj[[sobj_i]][["predictions"]] <- predictions.assay
+  sobj[[sobj_i]]$predicted.id <- GetTransferPredictions(sobj[[sobj_i]])
   
   DefaultAssay(sobj[[sobj_i]]) <- "SCT"
   sobj[[sobj_i]] <- FindSpatiallyVariableFeatures(sobj[[sobj_i]], assay = "SCT", slot = "scale.data", features = VariableFeatures(sobj[[sobj_i]])[1:1000], 
@@ -55,6 +56,7 @@ for(sobj_i in names(sobj)){
   saveRDS(varSpatialFeature,file.path(savedir,'varfeatures_spatial.rds'))
   write.csv(as.matrix(varSpatialFeature,ncol=1),file.path(savedir,'varfeatures_spatial.csv'))
   
+  sobj[[sobj_i]]@graphs<-list()
   loom <- as.loom(sobj[[sobj_i]], filename = file.path(savedir,paste0(sobj_i,'.loom')))
   loom$close_all()
 }
