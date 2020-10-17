@@ -18,7 +18,7 @@ sobj<-list()
 
 # sobj[['slideseq3000feature']]<-SCTransform(slide.seq, assay = "Spatial", ncells = 3000, verbose = FALSE,variable.features.n = 3000)
 # sobj[['slideseq5000feature']]<-SCTransform(slide.seq, assay = "Spatial", ncells = 3000, verbose = FALSE,variable.features.n = 5000)
-sobj[['slide.seq_rv1.3']]<-SCTransform(slide.seq, assay = "Spatial", ncells = 3000, verbose = FALSE,variable.features.n = NULL,variable.features.rv.th = 1.3)
+sobj[['slide.seq_rv3']]<-SCTransform(slide.seq, assay = "Spatial", ncells = 3000, verbose = FALSE,variable.features.n = NULL,variable.features.rv.th = 3)
 
 for(sobj_i in names(sobj)){
   savedir<-file.path(seuratsavepath,sobj_i)
