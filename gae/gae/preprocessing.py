@@ -1,3 +1,4 @@
+##adapted to pytorch from https://github.com/tkipf/gae ##
 import numpy as np
 import scipy.sparse as sp
 
@@ -20,19 +21,19 @@ def preprocess_graph(adj):
     return sparse_to_tuple(adj_normalized)
 
 
-def construct_feed_dict(adj_normalized, adj, features, placeholders):
-    # construct feed dictionary
-    feed_dict = dict()
-    feed_dict.update({placeholders['features']: features})
-    feed_dict.update({placeholders['adj']: adj_normalized})
-    feed_dict.update({placeholders['adj_orig']: adj})
-    return feed_dict
+# def construct_feed_dict(adj_normalized, adj, features, placeholders):
+#     # construct feed dictionary
+#     feed_dict = dict()
+#     feed_dict.update({placeholders['features']: features})
+#     feed_dict.update({placeholders['adj']: adj_normalized})
+#     feed_dict.update({placeholders['adj_orig']: adj})
+#     return feed_dict
 
 
 def mask_test_edges(adj):
     # Function to build test set with 10% positive links
-    # NOTE: Splits are randomized and results might slightly deviate from reported numbers in the paper.
-    # TODO: Clean up.
+    # change: using fixed seed for randomized split
+    # TODO: implement cross validation
 
     # Remove diagonal elements
     adj = adj - sp.dia_matrix((adj.diagonal()[np.newaxis, :], [0]), shape=adj.shape)
