@@ -3,9 +3,12 @@
 import torch
 import torch.nn.modules.loss
 import torch.nn.functional as F
+from sklearn.metrics import roc_auc_score
+from sklearn.metrics import average_precision_score
+import numpy as np
 
 
-def optimizerAE(preds, labels, mu, num_nodes, pos_weight, norm):
+def optimizerAE(preds, labels, mu, logvar, num_nodes, pos_weight, norm):
     cost=norm * F.binary_cross_entropy_with_logits(preds, labels, pos_weight=pos_weight,reduction='mean')
     return cost
 
@@ -14,6 +17,31 @@ def optimizerVAE(preds, labels, mu, logvar, num_nodes, pos_weight, norm):
     kl= (0.5 / num_nodes) * torch.mean(torch.sum(1 + 2 * logvar - mu.pow(2) - logvar.exp().pow(2), 1))
     cost-=kl
     return cost
+
+def accuracy(output, labels):
+    preds = (torch.sigmoid(output)>0.5).double()
+    correct = preds.eq(labels.double()).double()
+    return torch.mean(correct)
+
+def get_roc_score(edges_pos, edges_neg, adj_rec,adj_orig):
+    preds = []
+    pos = []
+    for e in edges_pos:
+        preds.append(torch.sigmoid(adj_rec[e[0], e[1]]))
+        pos.append(adj_orig[e[0], e[1]])
+
+    preds_neg = []
+    neg = []
+    for e in edges_neg:
+        preds_neg.append(torch.sigmoid(adj_rec[e[0], e[1]]))
+        neg.append(adj_orig[e[0], e[1]])
+
+    preds_all = np.hstack([preds, preds_neg])
+    labels_all = np.hstack([np.ones(len(preds)), np.zeros(len(preds_neg))])
+    roc_score = roc_auc_score(labels_all, preds_all)
+    ap_score = average_precision_score(labels_all, preds_all)
+
+    return roc_score, ap_score
 
 # class OptimizerAE(object):
 #     def __init__(self, preds, labels, pos_weight, norm):

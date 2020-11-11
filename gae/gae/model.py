@@ -1,16 +1,17 @@
 ##adapted to pytorch from https://github.com/tkipf/gae and https://github.com/zfjsail/gae-pytorch/blob/master/gae/model.py ##
 
-from gae.gae.layers import GraphConvolution, InnerProductDecoder
+# from gae.gae.layers import GraphConvolution, InnerProductDecoder
+import gae.gae.layers
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-class GCNModelAE(Model):
+class GCNModelAE(nn.Module):
     def __init__(self, input_feat_dim, hidden_dim1, hidden_dim2, dropout):
         super(GCNModelVAE, self).__init__()
-        self.gc1 = GraphConvolution(input_feat_dim, hidden_dim1, dropout, act=F.relu)
-        self.gc2 = GraphConvolution(hidden_dim1, hidden_dim2, dropout, act=lambda x: x)
-        self.dc = InnerProductDecoder(dropout, act=lambda x: x)
+        self.gc1 = gae.gae.layers.GraphConvolution(input_feat_dim, hidden_dim1, dropout, act=F.relu)
+        self.gc2 = gae.gae.layers.GraphConvolution(hidden_dim1, hidden_dim2, dropout, act=lambda x: x)
+        self.dc = gae.gae.layers.InnerProductDecoder(dropout, act=lambda x: x)
 
     def encode(self, x, adj):
         hidden1 = self.gc1(x, adj)
@@ -19,7 +20,7 @@ class GCNModelAE(Model):
     def forward(self, x, adj):
         mu= self.encode(x, adj)
         z = mu
-        return self.dc(z), mu
+        return self.dc(z), mu, None
 
 
 
@@ -29,10 +30,10 @@ class GCNModelVAE(nn.Module):
     """
     def __init__(self, input_feat_dim, hidden_dim1, hidden_dim2, dropout):
         super(GCNModelVAE, self).__init__()
-        self.gc1 = GraphConvolution(input_feat_dim, hidden_dim1, dropout, act=F.relu)
-        self.gc2 = GraphConvolution(hidden_dim1, hidden_dim2, dropout, act=lambda x: x)
-        self.gc3 = GraphConvolution(hidden_dim1, hidden_dim2, dropout, act=lambda x: x)
-        self.dc = InnerProductDecoder(dropout, act=lambda x: x)
+        self.gc1 = gae.gae.layers.GraphConvolution(input_feat_dim, hidden_dim1, dropout, act=F.relu)
+        self.gc2 = gae.gae.layers.GraphConvolution(hidden_dim1, hidden_dim2, dropout, act=lambda x: x)
+        self.gc3 = gae.gae.layers.GraphConvolution(hidden_dim1, hidden_dim2, dropout, act=lambda x: x)
+        self.dc = gae.gae.layers.InnerProductDecoder(dropout, act=lambda x: x)
 
     def encode(self, x, adj):
         hidden1 = self.gc1(x, adj)

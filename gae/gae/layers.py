@@ -1,8 +1,8 @@
 ##adapted to pytorch from https://github.com/tkipf/gae and https://github.com/tkipf/pygcn/blob/master/pygcn/layers.py ##
-from gae.gae.initializations import *
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import numpy as np
 
 
 # global unique layer ID dictionary for layer name assignment
@@ -42,7 +42,7 @@ class GraphConvolution(nn.Module):
         self.act = act
         self.weight=nn.parameter.Parameter(torch.FloatTensor(input_dim, output_dim))
         if bias:
-            self.bias = Parameter(torch.FloatTensor(out_features))
+            self.bias = nn.parameter.Parameter(torch.FloatTensor(output_dim))
         else:
             self.register_parameter('bias', None)
         self.reset_parameters()
@@ -51,25 +51,23 @@ class GraphConvolution(nn.Module):
         """Create a weight variable with Glorot & Bengio (AISTATS 2010)
         initialization.
         """
-        init_range = np.sqrt(6.0 / (input_dim + output_dim))
+        init_range = np.sqrt(6.0 / (self.input_dim + self.output_dim))
         nn.init.uniform_(self.weight, a=-init_range, b=init_range)
         
         if self.bias is not None:
             nn.init.uniform_(self.bias,a=-init_range, b=init_range)    
         
-    def forward(self.input):
+    def forward(self,input,adj):
         input = F.dropout(input, self.dropout, self.training)
         support = torch.mm(input, self.weight)
-        output = torch.spmm(self.adj, support)
+        output = torch.sparse.mm(adj, support)
         if self.bias is not None:
             output= output + self.bias
         output = self.act(output)
         return output
 
-     def __repr__(self):
-        return self.__class__.__name__ + ' (' \
-               + str(self.in_features) + ' -> ' \
-               + str(self.out_features) + ')'
+    def __repr__(self):
+        return self.__class__.__name__ + ' (' + str(self.in_features) + ' -> '+ str(self.out_features) + ')'
     
 # class GraphConvolutionSparse(Layer):
 #     """Graph convolution layer for sparse inputs."""
