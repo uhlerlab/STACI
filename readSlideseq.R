@@ -39,7 +39,22 @@ for(sobj_i in names(sobj)){
                                     weight.reduction = sobj[[sobj_i]][["pca"]], dims = 1:50)
   sobj[[sobj_i]][["predictions"]] <- predictions.assay
   sobj[[sobj_i]]$predicted.id <- GetTransferPredictions(sobj[[sobj_i]])
+    
+  predictions.assay <- TransferData(anchorset = anchors, refdata = ref$class, prediction.assay = TRUE, 
+                                    weight.reduction = sobj[[sobj_i]][["pca"]], dims = 1:50)
+  sobj[[sobj_i]][["predictions_class"]] <- predictions.assay
+  sobj[[sobj_i]]$predicted.id_class <- GetTransferPredictions(sobj[[sobj_i]], assay = "predictions_class")
+   
+  predictions.assay <- TransferData(anchorset = anchors, refdata = ref$subcluster, prediction.assay = TRUE, 
+                                    weight.reduction = sobj[[sobj_i]][["pca"]], dims = 1:50)
+  sobj[[sobj_i]][["predictions_subcluster"]] <- predictions.assay
+  sobj[[sobj_i]]$predicted.id_subcluster <- GetTransferPredictions(sobj[[sobj_i]], assay = "predictions_subcluster")
   
+  write.csv(as.matrix(sobj[[sobj_i]]$predicted.id,ncol=1),file.path(savedir,'predicted_id.csv'))
+  write.csv(as.matrix(sobj[[sobj_i]]$predicted.id_class,ncol=1),file.path(savedir,'predicted_id_class.csv'))
+  write.csv(as.matrix(sobj[[sobj_i]]$predicted.id_subcluster,ncol=1),file.path(savedir,'predicted_id_subcluster.csv'))
+    
+    
   DefaultAssay(sobj[[sobj_i]]) <- "SCT"
   sobj[[sobj_i]] <- FindSpatiallyVariableFeatures(sobj[[sobj_i]], assay = "SCT", slot = "scale.data", features = VariableFeatures(sobj[[sobj_i]])[1:1000], 
                                              selection.method = "moransi", x.cuts = 100, y.cuts = 100)
