@@ -18,6 +18,21 @@ def optimizerVAE(preds, labels, mu, logvar, num_nodes, pos_weight, norm):
     cost-=kl
     return cost
 
+
+def optimizer_kl(mu, logvar, nodemask):
+    kl= -(0.5 / nodemask.size()[0]) * torch.mean(torch.sum(1 + 2 * logvar[nodemask] - mu[nodemask].pow(2) - logvar[nodemask].exp().pow(2), 1))
+    return kl
+
+def optimizer_CE(preds, labels, pos_weight, norm,nodemask):
+    cost=norm * F.binary_cross_entropy_with_logits(preds[nodemask,:][:,nodemask], labels[nodemask,:][:,nodemask], pos_weight=pos_weight,reduction='mean')
+    return cost
+
+def optimizer_MSE(preds, inputs,mask,reconWeight,mse):
+    cost = mse(preds[mask], inputs[mask])*reconWeight
+    return cost
+               
+
+
 def accuracy(output, labels):
     preds = (torch.sigmoid(output)>0.5).double()
     correct = preds.eq(labels.double()).double()

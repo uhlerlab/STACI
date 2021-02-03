@@ -31,24 +31,24 @@ def preprocess_graph(adj):
     adj_normalized = adj_.dot(degree_mat_inv_sqrt).transpose().dot(degree_mat_inv_sqrt).tocoo()
     return sparse_mx_to_torch_sparse_tensor(adj_normalized)
 
-
-# def construct_feed_dict(adj_normalized, adj, features, placeholders):
-#     # construct feed dictionary
-#     feed_dict = dict()
-#     feed_dict.update({placeholders['features']: features})
-#     feed_dict.update({placeholders['adj']: adj_normalized})
-#     feed_dict.update({placeholders['adj_orig']: adj})
-#     return feed_dict
-
+def mask_nodes_edges(nNodes,testNodeSize=0.1,valNodeSize=0.05):
+    # randomly select nodes; mask all corresponding rows and columns in loss functions
+    num_test=int(round(testNodeSize*nNodes))
+    num_val=int(round(valNodeSize*nNodes))
+    all_nodes_idx = np.arange(nNodes)
+    np.random.shuffle(all_nodes_idx)
+    test_nodes_idx = all_nodes_idx[:num_test]
+    val_nodes_idx = all_nodes_idx[num_test:(num_val + num_test)]
+    train_nodes_idx=all_nodes_idx[(num_val + num_test):]
+    
+    return torch.tensor(train_nodes_idx),torch.tensor(val_nodes_idx),torch.tensor(test_nodes_idx)
+    
 
 def mask_test_edges(adj,crossVal,ncrossVal=3,testSize=0.1,valSize=0.05):
     # Function to build test set with 10% positive links
     # change: using fixed seed for randomized split; added cross validation
+    # change: adj does not have diagonal elements
 
-    # Remove diagonal elements
-    adj = adj - sp.dia_matrix((adj.diagonal()[np.newaxis, :], [0]), shape=adj.shape)
-    adj.eliminate_zeros()
-    # Check that diag is zero:
     assert np.diag(adj.todense()).sum() == 0
 
     adj_triu = sp.triu(adj)
@@ -135,3 +135,4 @@ def mask_test_edges(adj,crossVal,ncrossVal=3,testSize=0.1,valSize=0.05):
             train_edges = np.delete(edges, np.hstack([test_edge_idx, val_edge_idx]), axis=0)
             res[i]=getOneSet(test_edges,val_edges,train_edges)
         return res
+

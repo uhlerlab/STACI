@@ -33,11 +33,10 @@ def get_layer_uid(layer_name=''):
 
 class GraphConvolution(nn.Module):
     """Basic graph convolution layer for undirected graph without edge labels."""
-    def __init__(self, input_dim, output_dim, adj, dropout=0., act=F.relu,bias=True):
+    def __init__(self, input_dim, output_dim, dropout=0., act=F.relu,bias=True):
         super(GraphConvolution, self).__init__()
         self.input_dim = input_dim
         self.output_dim = output_dim
-        self.adj=adj
         self.dropout = dropout
         self.act = act
         self.weight=nn.parameter.Parameter(torch.FloatTensor(input_dim, output_dim))
@@ -102,3 +101,24 @@ class InnerProductDecoder(nn.Module):
         x=torch.mm(inputs, inputs.t())
         outputs = self.act(x)
         return outputs
+
+class FC(nn.Module):
+    def __init__(self, input_dim, output_dim, dropout=0., act=F.leaky_relu, batchnorm=False,bias=False):
+#     def __init__(self, input_dim, output_dim, dropout=0., act=F.leaky_relu, batchnorm=True,bias=True):
+        super(FC, self).__init__()
+        self.input_dim = input_dim
+        self.output_dim = output_dim
+        self.dropout = dropout
+        self.act = act
+        self.batchnorm=batchnorm
+        self.linearlayer=nn.Linear(input_dim,output_dim,bias=bias)
+        if batchnorm:
+            self.batchnormlayer=nn.BatchNorm1d(output_dim)
+    
+    def forward(self,input):
+        input = F.dropout(input, self.dropout, self.training)
+        output = self.linearlayer(input)
+        if self.batchnorm:
+            output=self.batchnormlayer(output)
+        output = self.act(output)
+        return output
