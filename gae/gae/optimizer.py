@@ -31,8 +31,35 @@ def optimizer_MSE(preds, inputs,mask,reconWeight,mse):
     cost = mse(preds[mask], inputs[mask])*reconWeight
     return cost
                
-
-
+def optimizer_nb(preds,y_true,mask,reconWeight,eps = 1e-10,ifmean=True):
+    #adapted from https://github.com/theislab/dca/blob/master/dca/loss.py
+    output,pi,theta,y_pred=preds
+    nbloss1=torch.lgamma(theta+eps) + torch.lgamma(y_true+1.0) - torch.lgamma(y_true+theta+eps)
+    nbloss2=(theta+y_true) * torch.log(1.0 + (y_pred/(theta+eps))) + (y_true * (torch.log(theta+eps) - torch.log(y_pred+eps)))
+    nbloss=nbloss1+nbloss2
+    
+#     nbloss=torch.where(torch.isnan(nbloss), torch.zeros_like(nbloss)+np.inf, nbloss)
+    if ifmean:
+        return torch.mean(nbloss[mask])*reconWeight
+    else:
+        return nbloss
+    
+def optimizer_zinb(preds,y_true,mask,reconWeight,ridgePi,y_true_raw,eps = 1e-10):
+    output,pi,theta,y_pred=preds
+    nb_case=optimizer_nb(preds,y_true,mask,reconWeight,eps = 1e-10,ifmean=False)- torch.log(pi+eps)
+    
+    zero_nb = torch.pow(theta/(theta+y_pred+eps), theta)
+    zero_case = -torch.log(pi + ((1.0-pi)*zero_nb)+eps)
+    result = torch.where(torch.lt(y_true_raw, 1), zero_case, nb_case)
+    ridge = ridgePi*pi*pi
+    result += ridge
+    result=torch.mean(result[mask])
+    
+#     result=torch.where(torch.isnan(result), torch.zeros_like(result)+np.inf, result)
+#     print(result.shape)
+    return result*reconWeight
+    
+    
 def accuracy(output, labels):
     preds = (torch.sigmoid(output)>0.5).double()
     correct = preds.eq(labels.double()).double()

@@ -190,7 +190,7 @@ class GCNModelVAE_XA_e2_d1(nn.Module):
         self.gc2 = gae.gae.layers.GraphConvolution(hidden_dim1, hidden_dim2, dropout, act=F.leaky_relu)
         self.gc2s = gae.gae.layers.GraphConvolution(hidden_dim1, hidden_dim2, dropout, act=F.leaky_relu)
         self.dc = gae.gae.layers.InnerProductDecoder(dropout, act=lambda x: x)
-        self.fc1 = gae.gae.layers.FC(hidden_dim1, input_feat_dim, dropout, act = lambda x: x, batchnorm = True)
+        self.fc1 = gae.gae.layers.FC(hidden_dim2, input_feat_dim, dropout, act = lambda x: x, batchnorm = True)
 
     def encode(self, x, adj):
         hidden1=self.gc1(x,adj)
@@ -207,6 +207,198 @@ class GCNModelVAE_XA_e2_d1(nn.Module):
     def decode_X(self,z):
         output = self.fc1(z)
         return output
+    
+    def forward(self, x, adj):
+        mu, logvar = self.encode(x, adj)
+        z = self.reparameterize(mu, logvar)
+        return self.dc(z), mu, logvar, z, self.decode_X(z)
+    
+class GCNModelVAE_XA_e2_d1_DCA(nn.Module):   
+    def __init__(self, input_feat_dim, hidden_dim1,hidden_dim2,hidden_decoder, dropout,meanMin=1e-5,meanMax=1e6,thetaMin=1e-5,thetaMax=1e6):
+        super(GCNModelVAE_XA_e2_d1_DCA, self).__init__()
+        self.gc1 = gae.gae.layers.GraphConvolution(input_feat_dim, hidden_dim1, dropout, act=F.leaky_relu)
+        self.gc2 = gae.gae.layers.GraphConvolution(hidden_dim1, hidden_dim2, dropout, act=F.leaky_relu)
+        self.gc2s = gae.gae.layers.GraphConvolution(hidden_dim1, hidden_dim2, dropout, act=F.leaky_relu)
+        self.dc = gae.gae.layers.InnerProductDecoder(dropout, act=lambda x: x)
+        self.fc1 = gae.gae.layers.FC(hidden_dim2, hidden_decoder, dropout, act = F.leaky_relu, batchnorm = True)
+        self.pi=gae.gae.layers.FC(hidden_decoder, input_feat_dim, dropout=0, act = torch.sigmoid, batchnorm = False,bias=True)
+        self.theta=gae.gae.layers.FC(hidden_decoder, input_feat_dim, dropout=0, act = lambda x: torch.clamp(F.softplus(x),min=thetaMin,max=thetaMax), batchnorm = False,bias=True)
+        self.mean=gae.gae.layers.FC(hidden_decoder, input_feat_dim, dropout=0, act = lambda x: torch.clamp(torch.exp(x),min=meanMin,max=meanMax), batchnorm = False,bias=True)
+
+    def encode(self, x, adj):
+        hidden1=self.gc1(x,adj)
+        return self.gc2(hidden1, adj), self.gc2s(hidden1, adj)
+
+    def reparameterize(self, mu, logvar):
+        if self.training:
+            std = torch.exp(logvar)
+            eps = torch.randn_like(std)
+            return eps.mul(std).add_(mu)
+        else:
+            return mu
+
+    def decode_X(self,z):
+        output = self.fc1(z)
+        pi_res=self.pi(output)
+        theta_res=self.theta(output)
+        mean_res=self.mean(output)
+        return output,pi_res,theta_res,mean_res
+    
+    def forward(self, x, adj):
+        mu, logvar = self.encode(x, adj)
+        z = self.reparameterize(mu, logvar)
+        return self.dc(z), mu, logvar, z, self.decode_X(z)
+    
+class GCNModelVAE_XA_e2_d1_DCAfork(nn.Module):   
+    def __init__(self, input_feat_dim, hidden_dim1,hidden_dim2,hidden_decoder, dropout,meanMin=1e-5,meanMax=1e6,thetaMin=1e-5,thetaMax=1e6):
+        super(GCNModelVAE_XA_e2_d1_DCAfork, self).__init__()
+        self.gc1 = gae.gae.layers.GraphConvolution(input_feat_dim, hidden_dim1, dropout, act=F.leaky_relu)
+        self.gc2 = gae.gae.layers.GraphConvolution(hidden_dim1, hidden_dim2, dropout, act=F.leaky_relu)
+        self.gc2s = gae.gae.layers.GraphConvolution(hidden_dim1, hidden_dim2, dropout, act=F.leaky_relu)
+        self.dc = gae.gae.layers.InnerProductDecoder(dropout, act=lambda x: x)
+        self.fc1p = gae.gae.layers.FC(hidden_dim2, hidden_decoder, dropout, act = F.leaky_relu, batchnorm = True)
+        self.fc1t = gae.gae.layers.FC(hidden_dim2, hidden_decoder, dropout, act = F.leaky_relu, batchnorm = True)
+        self.fc1m = gae.gae.layers.FC(hidden_dim2, hidden_decoder, dropout, act = F.leaky_relu, batchnorm = True)
+        self.pi=gae.gae.layers.FC(hidden_decoder, input_feat_dim, dropout=0, act = torch.sigmoid, batchnorm = False,bias=True)
+        self.theta=gae.gae.layers.FC(hidden_decoder, input_feat_dim, dropout=0, act = lambda x: torch.clamp(F.softplus(x),min=thetaMin,max=thetaMax), batchnorm = False,bias=True)
+        self.mean=gae.gae.layers.FC(hidden_decoder, input_feat_dim, dropout=0, act = lambda x: torch.clamp(torch.exp(x),min=meanMin,max=meanMax), batchnorm = False,bias=True)
+
+    def encode(self, x, adj):
+        hidden1=self.gc1(x,adj)
+        return self.gc2(hidden1, adj), self.gc2s(hidden1, adj)
+
+    def reparameterize(self, mu, logvar):
+        if self.training:
+            std = torch.exp(logvar)
+            eps = torch.randn_like(std)
+            return eps.mul(std).add_(mu)
+        else:
+            return mu
+
+    def decode_X(self,z):
+        outputp = self.fc1p(z)
+        outputt = self.fc1t(z)
+        outputm = self.fc1m(z)
+        pi_res=self.pi(outputp)
+        theta_res=self.theta(outputt)
+        mean_res=self.mean(outputm)
+        return (outputp,outputt,outputm),pi_res,theta_res,mean_res
+    
+    def forward(self, x, adj):
+        mu, logvar = self.encode(x, adj)
+        z = self.reparameterize(mu, logvar)
+        return self.dc(z), mu, logvar, z, self.decode_X(z)
+
+class GCNModelVAE_XA_e2_d1_DCAelemPi(nn.Module):   
+    def __init__(self, input_feat_dim, hidden_dim1,hidden_dim2,hidden_decoder, dropout,shareGenePi,meanMin=1e-5,meanMax=1e6,thetaMin=1e-5,thetaMax=1e6):
+        super(GCNModelVAE_XA_e2_d1_DCAelemPi, self).__init__()
+        self.gc1 = gae.gae.layers.GraphConvolution(input_feat_dim, hidden_dim1, dropout, act=F.leaky_relu)
+        self.gc2 = gae.gae.layers.GraphConvolution(hidden_dim1, hidden_dim2, dropout, act=F.leaky_relu)
+        self.gc2s = gae.gae.layers.GraphConvolution(hidden_dim1, hidden_dim2, dropout, act=F.leaky_relu)
+        self.dc = gae.gae.layers.InnerProductDecoder(dropout, act=lambda x: x)
+        self.fc1 = gae.gae.layers.FC(hidden_dim2, hidden_decoder, dropout, act = F.leaky_relu, batchnorm = True)
+        if shareGenePi:
+            pisize=1
+        else:
+            pisize=input_feat_dim
+        self.pi=gae.gae.layers.FC_elementwise(input_feat_dim,pisize, dropout=0, act = torch.sigmoid, batchnorm = False,bias=True)
+        self.theta=gae.gae.layers.FC(hidden_decoder, input_feat_dim, dropout=0, act = lambda x: torch.clamp(F.softplus(x),min=thetaMin,max=thetaMax), batchnorm = False,bias=True)
+        self.meanNoAct=gae.gae.layers.FC(hidden_decoder, input_feat_dim, dropout=0, act = lambda x: x, batchnorm = False,bias=True)
+        self.meanAct=lambda x: torch.clamp(torch.exp(x),min=meanMin,max=meanMax)
+
+    def encode(self, x, adj):
+        hidden1=self.gc1(x,adj)
+        return self.gc2(hidden1, adj), self.gc2s(hidden1, adj)
+
+    def reparameterize(self, mu, logvar):
+        if self.training:
+            std = torch.exp(logvar)
+            eps = torch.randn_like(std)
+            return eps.mul(std).add_(mu)
+        else:
+            return mu
+
+    def decode_X(self,z):
+        output = self.fc1(z)
+#         pi_res=self.pi(output)
+        theta_res=self.theta(output)
+        mean=self.meanNoAct(output)
+        mean_res=self.meanAct(mean)
+        pi_res=self.pi(mean)
+        return output,pi_res,theta_res,mean_res
+    
+    def forward(self, x, adj):
+        mu, logvar = self.encode(x, adj)
+        z = self.reparameterize(mu, logvar)
+        return self.dc(z), mu, logvar, z, self.decode_X(z)
+
+class GCNModelVAE_XA_e2_d1_DCA_constantDisp(nn.Module):   
+    def __init__(self, input_feat_dim, hidden_dim1,hidden_dim2,hidden_decoder, dropout,meanMin=1e-5,meanMax=1e6,thetaMin=1e-5,thetaMax=1e6):
+        super(GCNModelVAE_XA_e2_d1_DCA_constantDisp, self).__init__()
+        self.gc1 = gae.gae.layers.GraphConvolution(input_feat_dim, hidden_dim1, dropout, act=F.leaky_relu)
+        self.gc2 = gae.gae.layers.GraphConvolution(hidden_dim1, hidden_dim2, dropout, act=F.leaky_relu)
+        self.gc2s = gae.gae.layers.GraphConvolution(hidden_dim1, hidden_dim2, dropout, act=F.leaky_relu)
+        self.dc = gae.gae.layers.InnerProductDecoder(dropout, act=lambda x: x)
+        self.fc1 = gae.gae.layers.FC(hidden_dim2, hidden_decoder, dropout, act = F.leaky_relu, batchnorm = True)
+        self.pi=gae.gae.layers.FC(hidden_decoder, input_feat_dim, dropout=0, act = torch.sigmoid, batchnorm = False,bias=True)
+        self.theta=nn.parameter.Parameter(torch.zeros(1,input_feat_dim))
+        self.thetaAct=lambda x: torch.clamp(F.softplus(x),min=thetaMin,max=thetaMax)
+        self.mean=gae.gae.layers.FC(hidden_decoder, input_feat_dim, dropout=0, act = lambda x: torch.clamp(torch.exp(x),min=meanMin,max=meanMax), batchnorm = False,bias=True)
+
+    def encode(self, x, adj):
+        hidden1=self.gc1(x,adj)
+        return self.gc2(hidden1, adj), self.gc2s(hidden1, adj)
+
+    def reparameterize(self, mu, logvar):
+        if self.training:
+            std = torch.exp(logvar)
+            eps = torch.randn_like(std)
+            return eps.mul(std).add_(mu)
+        else:
+            return mu
+
+    def decode_X(self,z):
+        output = self.fc1(z)
+        pi_res=self.pi(output)
+        theta_res=self.thetaAct(self.theta)
+        mean_res=self.mean(output)
+        return output,pi_res,theta_res,mean_res
+    
+    def forward(self, x, adj):
+        mu, logvar = self.encode(x, adj)
+        z = self.reparameterize(mu, logvar)
+        return self.dc(z), mu, logvar, z, self.decode_X(z)    
+
+class GCNModelVAE_XA_e2_d1_DCAshared(nn.Module):   
+    def __init__(self, input_feat_dim, hidden_dim1,hidden_dim2,hidden_decoder, dropout,meanMin=1e-5,meanMax=1e6,thetaMin=1e-5,thetaMax=1e6):
+        super(GCNModelVAE_XA_e2_d1_DCAshared, self).__init__()
+        self.gc1 = gae.gae.layers.GraphConvolution(input_feat_dim, hidden_dim1, dropout, act=F.leaky_relu)
+        self.gc2 = gae.gae.layers.GraphConvolution(hidden_dim1, hidden_dim2, dropout, act=F.leaky_relu)
+        self.gc2s = gae.gae.layers.GraphConvolution(hidden_dim1, hidden_dim2, dropout, act=F.leaky_relu)
+        self.dc = gae.gae.layers.InnerProductDecoder(dropout, act=lambda x: x)
+        self.fc1 = gae.gae.layers.FC(hidden_dim2, hidden_decoder, dropout, act = F.leaky_relu, batchnorm = True)
+        self.pi=gae.gae.layers.FC(hidden_decoder, 1, dropout=0, act = torch.sigmoid, batchnorm = False,bias=True)
+        self.theta=gae.gae.layers.FC(hidden_decoder, 1, dropout=0, act = lambda x: torch.clamp(F.softplus(x),min=thetaMin,max=thetaMax), batchnorm = False,bias=True)
+        self.mean=gae.gae.layers.FC(hidden_decoder, input_feat_dim, dropout=0, act = lambda x: torch.clamp(torch.exp(x),min=meanMin,max=meanMax), batchnorm = False,bias=True)
+
+    def encode(self, x, adj):
+        hidden1=self.gc1(x,adj)
+        return self.gc2(hidden1, adj), self.gc2s(hidden1, adj)
+
+    def reparameterize(self, mu, logvar):
+        if self.training:
+            std = torch.exp(logvar)
+            eps = torch.randn_like(std)
+            return eps.mul(std).add_(mu)
+        else:
+            return mu
+
+    def decode_X(self,z):
+        output = self.fc1(z)
+        pi_res=self.pi(output)
+        theta_res=self.theta(output)
+        mean_res=self.mean(output)
+        return output,pi_res,theta_res,mean_res
     
     def forward(self, x, adj):
         mu, logvar = self.encode(x, adj)
@@ -269,15 +461,17 @@ class GCNModelVAE_gcnX_inprA(nn.Module):
         else:
             return mu
 
-    def decode_X(self,z,adj):
-        output = self.gc_dec1(z,adj)
-        output = self.gc_dec2(output,adj)
+    def decode_X(self,z,adj_decode):
+        output = self.gc_dec1(z,adj_decode)
+        output = self.gc_dec2(output,adj_decode)
         return output
     
-    def forward(self, x, adj):
+    def forward(self, x, adj,adj_decode=None):
+        if adj_decode is None:
+            adj_decode=adj
         mu, logvar = self.encode(x, adj)
         z = self.reparameterize(mu, logvar)
-        return self.dc(z), mu, logvar, z, self.decode_X(z,adj)
+        return self.dc(z), mu, logvar, z, self.decode_X(z,adj_decode)
     
 
 class FCVAE(nn.Module): 
@@ -351,6 +545,41 @@ class FCVAE1(nn.Module):
         mu, logvar = self.encode(x)
         z = self.reparameterize(mu, logvar)
         return self.dc(z), mu, logvar, z, self.decode_X(z)
+
+class FCVAE1_DCA(nn.Module): 
+    def __init__(self, input_feat_dim, hidden,hidden_decoder, dropout,meanMin=1e-5,meanMax=1e6,thetaMin=1e-5,thetaMax=1e6):
+        super(FCVAE1_DCA, self).__init__()
+        self.fcE1 = gae.gae.layers.FC(input_feat_dim, hidden, dropout, act=F.leaky_relu, batchnorm = True,bias=True)
+        self.fcE1s = gae.gae.layers.FC(input_feat_dim, hidden, dropout, act=F.leaky_relu, batchnorm = True,bias=True)
+        self.dc = gae.gae.layers.InnerProductDecoder(dropout, act=lambda x: x)
+        self.fcD1 = gae.gae.layers.FC(hidden, hidden_decoder, dropout, act = F.leaky_relu, batchnorm = True,bias=True)
+        self.pi=gae.gae.layers.FC(hidden_decoder, input_feat_dim, dropout=0, act = torch.sigmoid, batchnorm = False,bias=True)
+        self.theta=gae.gae.layers.FC(hidden_decoder, input_feat_dim, dropout=0, act = lambda x: torch.clamp(F.softplus(x),min=thetaMin,max=thetaMax), batchnorm = False,bias=True)
+        self.mean=gae.gae.layers.FC(hidden_decoder, input_feat_dim, dropout=0, act = lambda x: torch.clamp(torch.exp(x),min=meanMin,max=meanMax), batchnorm = False,bias=True)
+        
+
+    def encode(self, x):
+        return self.fcE1(x),self.fcE1s(x)
+
+    def reparameterize(self, mu, logvar):
+        if self.training:
+            std = torch.exp(logvar)
+            eps = torch.randn_like(std)
+            return eps.mul(std).add_(mu)
+        else:
+            return mu
+
+    def decode_X(self,z):
+        output = self.fcD1(z)
+        pi_res=self.pi(output)
+        theta_res=self.theta(output)
+        mean_res=self.mean(output)
+        return output,pi_res,theta_res,mean_res
+    
+    def forward(self, x, adj):
+        mu, logvar = self.encode(x)
+        z = self.reparameterize(mu, logvar)
+        return self.dc(z), mu, logvar, z, self.decode_X(z)    
     
 class FCAE(nn.Module): 
     def __init__(self, input_feat_dim, hidden_dim1, hidden_dim2,hidden_dim3,hidden_dim4,hidden_dim5,fc_dim1,fc_dim2,fc_dim3,fc_dim4, dropout):

@@ -31,6 +31,15 @@ def preprocess_graph(adj):
     adj_normalized = adj_.dot(degree_mat_inv_sqrt).transpose().dot(degree_mat_inv_sqrt).tocoo()
     return sparse_mx_to_torch_sparse_tensor(adj_normalized)
 
+def preprocess_graph_sharp(adj):
+    """from paper Symmetric Graph Convolutional Autoencoder for Unsupervised Graph Representation Learning"""
+    adj = sp.coo_matrix(adj)
+    adj_ = 2*sp.eye(adj.shape[0])-adj
+    rowsum = np.array(adj.sum(1))+2
+    degree_mat_inv_sqrt = sp.diags(np.power(rowsum, -0.5).flatten())
+    adj_normalized = adj_.dot(degree_mat_inv_sqrt).transpose().dot(degree_mat_inv_sqrt).tocoo()
+    return sparse_mx_to_torch_sparse_tensor(adj_normalized)
+
 def mask_nodes_edges(nNodes,testNodeSize=0.1,valNodeSize=0.05):
     # randomly select nodes; mask all corresponding rows and columns in loss functions
     num_test=int(round(testNodeSize*nNodes))

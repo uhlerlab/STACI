@@ -122,3 +122,40 @@ class FC(nn.Module):
             output=self.batchnormlayer(output)
         output = self.act(output)
         return output
+    
+class FC_elementwise(nn.Module):
+    def __init__(self, input_dim,piSize, dropout=0., act=F.leaky_relu, batchnorm=False,bias=False):
+        super(FC_elementwise, self).__init__()
+        self.input_dim = input_dim
+        self.piSize = piSize
+        self.dropout = dropout
+        self.act = act
+        self.batchnorm=batchnorm
+        if batchnorm:
+            self.batchnormlayer=nn.BatchNorm1d(input_dim)
+        self.weight=nn.parameter.Parameter(torch.FloatTensor(piSize))
+        if bias:
+            self.bias = nn.parameter.Parameter(torch.FloatTensor(piSize))
+        else:
+            self.register_parameter('bias', None)
+        self.reset_parameters()
+
+    def reset_parameters(self):
+        """Create a weight variable with Glorot & Bengio (AISTATS 2010)
+        initialization.
+        """
+        init_range = np.sqrt(6.0 / (self.input_dim + self.input_dim)) #output dim same as input
+        nn.init.uniform_(self.weight, a=-init_range, b=init_range)
+        if self.bias is not None:
+            nn.init.uniform_(self.bias,a=-init_range, b=init_range)
+    
+    def forward(self,input):
+        input = F.dropout(input, self.dropout, self.training)
+#         output = self.linearlayer(input)
+        output=input*self.weight
+        if self.bias is not None:
+            output= output + self.bias
+        if self.batchnorm:
+            output=self.batchnormlayer(output)
+        output = self.act(output)
+        return output
