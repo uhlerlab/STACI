@@ -27,6 +27,10 @@ def optimizer_CE(preds, labels, pos_weight, norm,nodemask):
     cost=norm * F.binary_cross_entropy_with_logits(preds[nodemask,:][:,nodemask], labels[nodemask,:][:,nodemask], pos_weight=pos_weight,reduction='mean')
     return cost
 
+def optimizer_CEclf(preds, labels, nodemask):
+    cost= F.binary_cross_entropy_with_logits(preds[nodemask,:], labels[nodemask,:])
+    return cost
+
 def optimizer_MSE(preds, inputs,mask,reconWeight,mse):
     cost = mse(preds[mask], inputs[mask])*reconWeight
     return cost
