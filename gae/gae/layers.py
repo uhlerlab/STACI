@@ -66,7 +66,7 @@ class GraphConvolution(nn.Module):
         return output
 
     def __repr__(self):
-        return self.__class__.__name__ + ' (' + str(self.in_features) + ' -> '+ str(self.out_features) + ')'
+        return self.__class__.__name__ + ' (' + str(self.input_dim) + ' -> '+ str(self.output_dim) + ')'
     
 # class GraphConvolutionSparse(Layer):
 #     """Graph convolution layer for sparse inputs."""

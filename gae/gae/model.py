@@ -670,3 +670,14 @@ class Clf_fc1(nn.Module):
     def forward(self, z):
         out=self.fc1(z)
         return self.fc2(out)
+    
+class Clf_linear1(nn.Module): 
+    def __init__(self, input_feat_dim, dropout,out_dim,batchnorm=True,bias=True):
+        super(Clf_linear1, self).__init__()
+        
+        self.fc1 = gae.gae.layers.FC(input_feat_dim, out_dim, dropout, act = lambda x:x, batchnorm = batchnorm,bias=bias)
+
+    
+    def forward(self, z):
+        out=self.fc1(z)
+        return out

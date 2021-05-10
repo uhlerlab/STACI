@@ -40,8 +40,9 @@ def preprocess_graph_sharp(adj):
     adj_normalized = adj_.dot(degree_mat_inv_sqrt).transpose().dot(degree_mat_inv_sqrt).tocoo()
     return sparse_mx_to_torch_sparse_tensor(adj_normalized)
 
-def mask_nodes_edges(nNodes,testNodeSize=0.1,valNodeSize=0.05):
+def mask_nodes_edges(nNodes,testNodeSize=0.1,valNodeSize=0.05,seed=3):
     # randomly select nodes; mask all corresponding rows and columns in loss functions
+    np.random.seed(seed)
     num_test=int(round(testNodeSize*nNodes))
     num_val=int(round(valNodeSize*nNodes))
     all_nodes_idx = np.arange(nNodes)
