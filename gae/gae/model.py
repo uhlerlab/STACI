@@ -249,6 +249,47 @@ class GCNModelVAE_XA_e2_d1_DCA(nn.Module):
         z = self.reparameterize(mu, logvar)
         return self.dc(z), mu, logvar, z, self.decode_X(z)
     
+class GCNModelVAE_XA_e2_d1_DCA_fca(nn.Module):   
+    def __init__(self, input_feat_dim, hidden_dim1,hidden_dim2,hidden_decoder, dropout,meanMin=1e-5,meanMax=1e6,thetaMin=1e-5,thetaMax=1e6):
+        super(GCNModelVAE_XA_e2_d1_DCA_fca, self).__init__()
+        self.gc1 = gae.gae.layers.GraphConvolution(input_feat_dim, hidden_dim1, dropout, act=F.leaky_relu)
+        self.gc2 = gae.gae.layers.GraphConvolution(hidden_dim1, hidden_dim2, dropout, act=F.leaky_relu)
+        self.gc2s = gae.gae.layers.GraphConvolution(hidden_dim1, hidden_dim2, dropout, act=F.leaky_relu)
+        self.dc = gae.gae.layers.InnerProductDecoder(dropout, act=lambda x: x)
+        self.fc1 = gae.gae.layers.FC(hidden_dim2, hidden_decoder, dropout, act = F.leaky_relu, batchnorm = True)
+        self.fca = gae.gae.layers.FC(hidden_dim2, hidden_dim2, dropout, act = F.leaky_relu, batchnorm = True)
+        self.pi=gae.gae.layers.FC(hidden_decoder, input_feat_dim, dropout=0, act = torch.sigmoid, batchnorm = False,bias=True)
+        self.theta=gae.gae.layers.FC(hidden_decoder, input_feat_dim, dropout=0, act = lambda x: torch.clamp(F.softplus(x),min=thetaMin,max=thetaMax), batchnorm = False,bias=True)
+        self.mean=gae.gae.layers.FC(hidden_decoder, input_feat_dim, dropout=0, act = lambda x: torch.clamp(torch.exp(x),min=meanMin,max=meanMax), batchnorm = False,bias=True)
+
+    def encode(self, x, adj):
+        hidden1=self.gc1(x,adj)
+        return self.gc2(hidden1, adj), self.gc2s(hidden1, adj)
+
+    def reparameterize(self, mu, logvar):
+        if self.training:
+            std = torch.exp(logvar)
+            eps = torch.randn_like(std)
+            return eps.mul(std).add_(mu)
+        else:
+            return mu
+
+    def decode_X(self,z):
+        output = self.fc1(z)
+        pi_res=self.pi(output)
+        theta_res=self.theta(output)
+        mean_res=self.mean(output)
+        return output,pi_res,theta_res,mean_res
+    
+    def decode_A(self,z):
+        output = self.fca(z)
+        return self.dc(output)
+    
+    def forward(self, x, adj):
+        mu, logvar = self.encode(x, adj)
+        z = self.reparameterize(mu, logvar)
+        return self.decode_A(z), mu, logvar, z, self.decode_X(z)
+    
 class GCNModelVAE_XA_e2_d1_DCAfork(nn.Module):   
     def __init__(self, input_feat_dim, hidden_dim1,hidden_dim2,hidden_decoder, dropout,meanMin=1e-5,meanMax=1e6,thetaMin=1e-5,thetaMax=1e6):
         super(GCNModelVAE_XA_e2_d1_DCAfork, self).__init__()
@@ -546,6 +587,39 @@ class FCVAE1(nn.Module):
         z = self.reparameterize(mu, logvar)
         return self.dc(z), mu, logvar, z, self.decode_X(z)
 
+class FCVAE1_fca(nn.Module): 
+    def __init__(self, input_feat_dim, hidden, dropout):
+        super(FCVAE1_fca, self).__init__()
+        self.fcE1 = gae.gae.layers.FC(input_feat_dim, hidden, dropout, act=F.leaky_relu, batchnorm = True)
+        self.fcE1s = gae.gae.layers.FC(input_feat_dim, hidden, dropout, act=F.leaky_relu, batchnorm = True)
+        self.dc = gae.gae.layers.InnerProductDecoder(dropout, act=lambda x: x)
+        self.fcD1 = gae.gae.layers.FC(hidden, input_feat_dim, dropout, act = lambda x:x, batchnorm = True)
+        self.fcD2 = gae.gae.layers.FC(hidden, hidden, dropout, act = F.leaky_relu, batchnorm = True)
+
+    def encode(self, x):
+        return self.fcE1(x),self.fcE1s(x)
+
+    def reparameterize(self, mu, logvar):
+        if self.training:
+            std = torch.exp(logvar)
+            eps = torch.randn_like(std)
+            return eps.mul(std).add_(mu)
+        else:
+            return mu
+
+    def decode_X(self,z):
+        output = self.fcD1(z)
+        return output
+    
+    def decode_A(self,z):
+        output=self.fcD2(z)
+        return self.dc(output)
+    
+    def forward(self, x, adj):
+        mu, logvar = self.encode(x)
+        z = self.reparameterize(mu, logvar)
+        return self.decode_A(z), mu, logvar, z, self.decode_X(z)    
+    
 class FCVAE1_DCA(nn.Module): 
     def __init__(self, input_feat_dim, hidden,hidden_decoder, dropout,meanMin=1e-5,meanMax=1e6,thetaMin=1e-5,thetaMax=1e6):
         super(FCVAE1_DCA, self).__init__()
