@@ -19,7 +19,10 @@ def optimizerVAE(preds, labels, mu, logvar, num_nodes, pos_weight, norm):
     return cost
 
 
-def optimizer_kl(mu, logvar, nodemask):
+def optimizer_kl(mu, logvar, nodemask=None):
+    if nodemask is None:
+        kl= -(0.5 / mu.size()[0]) * torch.mean(torch.sum(1 + 2 * logvar - mu.pow(2) - logvar.exp().pow(2), 1))
+        return kl
     kl= -(0.5 / nodemask.size()[0]) * torch.mean(torch.sum(1 + 2 * logvar[nodemask] - mu[nodemask].pow(2) - logvar[nodemask].exp().pow(2), 1))
     return kl
 
