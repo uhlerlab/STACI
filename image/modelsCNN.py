@@ -62,10 +62,13 @@ class CNN_VAE(nn.Module):
     def encode(self, x):
         h = self.encoder(x)
 #         print(h.size())
+        if torch.isnan(torch.sum(h)):
+            print('convolution exploded')
         h = h.view(-1, h.size()[1]*h.size()[2]*h.size()[3])
         return self.fcE1(h), self.fcE2(h)
  
     def reparameterize(self, mu, logvar):
+#         return mu
         if self.training:
             std = torch.exp(logvar)
             eps = torch.randn_like(std)

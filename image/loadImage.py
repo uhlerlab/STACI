@@ -7,7 +7,7 @@ Image.MAX_IMAGE_PIXELS = None
 
 minDist=int(13/0.3)
 
-def loadandsplit(samplename,imagedir,diamThresh,val,test,ifFlip=True,minCutoff=6,seed=3):
+def loadandsplit(samplename,imagedir,diamThresh,val,test,ifFlip=True,minCutoff=6,seed=3,split=True):
 #     diamThresh=minDist*diamThresh_mul
     imagepath=os.path.join(imagedir,samplename,'trimmed_images','pi_sum.tif')
     image=mpimg.imread(imagepath).copy()
@@ -29,8 +29,14 @@ def loadandsplit(samplename,imagedir,diamThresh,val,test,ifFlip=True,minCutoff=6
             imagerc=image[r*diamThresh:min((r+1)*diamThresh,image.shape[0]),c*diamThresh:min((c+1)*diamThresh,image.shape[1])]
             imagercmin=np.min(imagerc)
             imagercmax=np.max(imagerc)
-            imagerc=(imagerc-imagercmin)/(imagercmax-imagercmin)
+            if imagercmin==imagercmax:
+                print('no cells')
+                imagerc=np.zeros_like(imagerc)
+            else:
+                imagerc=(imagerc-imagercmin)/(imagercmax-imagercmin)
             res[r*colSplits+c,0,:imagerc.shape[0],:imagerc.shape[1]]=imagerc
+    if not split:
+        return res,rowSplits,colSplits
     imTrain,imValTest=train_test_split(res,test_size=val+test, random_state=seed, shuffle=True)
     imVal,imTest=train_test_split(imValTest,test_size=test/(val+test), random_state=seed, shuffle=True)
     return imTrain,imVal,imTest
