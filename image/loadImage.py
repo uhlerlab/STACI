@@ -7,7 +7,7 @@ Image.MAX_IMAGE_PIXELS = None
 
 minDist=int(13/0.3)
 
-def loadandsplit(samplename,imagedir,diamThresh,val,test,ifFlip=True,minCutoff=6,seed=3,split=True):
+def loadandsplit(samplename,imagedir,diamThresh,overlap,val,test,ifFlip=True,minCutoff=6,seed=3,split=True,imagename='pi_sum.tif'):
 #     diamThresh=minDist*diamThresh_mul
     imagepath=os.path.join(imagedir,samplename,'trimmed_images','pi_sum.tif')
     image=mpimg.imread(imagepath).copy()
@@ -20,13 +20,14 @@ def loadandsplit(samplename,imagedir,diamThresh,val,test,ifFlip=True,minCutoff=6
         image=np.fliplr(image)
         image=np.flipud(image)
     
-    rowSplits=int(np.floor(image.shape[0]/diamThresh)+((image.shape[0]%diamThresh)>(minDist*minCutoff)))
-    colSplits=int(np.floor(image.shape[1]/diamThresh)+((image.shape[1]%diamThresh)>(minDist*minCutoff)))
+    stride=diamThresh-overlap
+    rowSplits=int(np.floor(image.shape[0]/diamThresh)+((image.shape[0]%diamThresh-overlap)>(minDist*minCutoff)))
+    colSplits=int(np.floor(image.shape[1]/diamThresh)+((image.shape[1]%diamThresh-overlap)>(minDist*minCutoff)))
     res=np.zeros((rowSplits*colSplits,1,diamThresh,diamThresh))
     
     for r in range(rowSplits):
         for c in range(colSplits):
-            imagerc=image[r*diamThresh:min((r+1)*diamThresh,image.shape[0]),c*diamThresh:min((c+1)*diamThresh,image.shape[1])]
+            imagerc=image[r*stride:min((r+1)*stride+overlap,image.shape[0]),c*stride:min((c+1)*stride+overlap,image.shape[1])]
             imagercmin=np.min(imagerc)
             imagercmax=np.max(imagerc)
             if imagercmin==imagercmax:
