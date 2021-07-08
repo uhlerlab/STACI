@@ -202,19 +202,17 @@ def loadandsplitPlaque_overlap(areaThresh,coord,cutoffradius,samplename,imagedir
                 else:
                     imagerc=(imagerc-imagercmin)/(imagercmax-imagercmin)
 #             imagerc=np.pad(imagerc,((0,diamThresh-imagerc.shape[0]),(0,diamThresh-imagerc.shape[1])))
-            res[r*colSplits+c,:,:imagerc.shape[0],:imagerc.shape[1]]=imagerc.reshape((nchannels,imagerc.shape[0],imagerc.shape[1]))
-            coordNeg[r*colSplits+c]=np.array([r*stride+diamThresh/2,c*stride+diamThresh/2])
+            res[idx,:,:imagerc.shape[0],:imagerc.shape[1]]=imagerc.reshape((nchannels,imagerc.shape[0],imagerc.shape[1]))
+            coordNeg[idx]=np.array([r*stride+diamThresh/2,c*stride+diamThresh/2])
             idx+=1
 #             plaqueRes=np.concatenate((plaqueRes,imagerc.reshape((1,nchannels,imagerc.shape[0],imagerc.shape[1]))),axis=0)
 #             coord=np.concatenate((coord,np.array([r*stride+diamThresh/2,c*stride+diamThresh/2]).reshape((1,2))),axis=0)
-    plaqueRes=np.concatenate((res[:idx],plaqueRes),axis=0)
-    coord=np.concatenate((coordNeg[:idx],coord),axis=0)
-    labels=np.repeat(1,coord.shape[0])
+#     plaqueRes=np.concatenate((res[:idx],plaqueRes),axis=0)
+#     coord=np.concatenate((coordNeg[:idx],coord),axis=0)
+    labels=np.repeat(1,coord.shape[0]+idx)
+    naddedplaque=idx
     print('plaque'+str(labels.shape[0]))
     
-    res=np.zeros((rowSplits*colSplits,nchannels,diamThresh,diamThresh))
-    coordNeg=np.zeros((rowSplits*colSplits,2))
-    idx=0
     for r in range(rowSplits):
         for c in range(colSplits):
             if np.sum(plaqueBinary[r*stride:min((r+1)*stride+overlap,image.shape[0]), c*stride:min((c+1)*stride+overlap,image.shape[1])])>0:
@@ -230,15 +228,15 @@ def loadandsplitPlaque_overlap(areaThresh,coord,cutoffradius,samplename,imagedir
                 else:
                     imagerc=(imagerc-imagercmin)/(imagercmax-imagercmin)
 #             imagerc=np.pad(imagerc,((0,diamThresh-imagerc.shape[0]),(0,diamThresh-imagerc.shape[1])))
-            res[r*colSplits+c,:,:imagerc.shape[0],:imagerc.shape[1]]=imagerc.reshape((nchannels,imagerc.shape[0],imagerc.shape[1]))
-            coordNeg[r*colSplits+c]=np.array([r*stride+diamThresh/2,c*stride+diamThresh/2])
+            res[idx,:,:imagerc.shape[0],:imagerc.shape[1]]=imagerc.reshape((nchannels,imagerc.shape[0],imagerc.shape[1]))
+            coordNeg[idx]=np.array([r*stride+diamThresh/2,c*stride+diamThresh/2])
             idx+=1
 #             plaqueRes=np.concatenate((plaqueRes,imagerc.reshape((1,nchannels,imagerc.shape[0],imagerc.shape[1]))),axis=0)
 #             coord=np.concatenate((coord,np.array([r*stride+diamThresh/2,c*stride+diamThresh/2]).reshape((1,2))),axis=0)
-    plaqueRes=np.concatenate((res[:idx],plaqueRes),axis=0)
-    coord=np.concatenate((coordNeg[:idx],coord),axis=0)
-    labels=np.concatenate((np.repeat(0,idx),labels))
-    print('no plaque'+str(idx))
+    plaqueRes=np.concatenate((plaqueRes,res[:idx]),axis=0)
+    coord=np.concatenate((coord,coordNeg[:idx]),axis=0)
+    labels=np.concatenate((labels,np.repeat(0,idx-naddedplaque)))
+    print('no plaque'+str(idx-naddedplaque))
     
     res=None
     coorNeg=None
