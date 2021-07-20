@@ -89,7 +89,7 @@ class CNN_VAE(nn.Module):
     
 # https://pytorch.org/vision/stable/_modules/torchvision/models/alexnet.html
 class AlexNet(nn.Module):
-    def __init__(self, num_classes):
+    def __init__(self, num_classes,regrs=False):
         super(AlexNet, self).__init__()
         self.features = nn.Sequential(
             nn.Conv2d(1, 32, kernel_size=11, stride=4, padding=2),
@@ -116,12 +116,17 @@ class AlexNet(nn.Module):
             nn.LeakyReLU(inplace=True),
             nn.Linear(1024, num_classes),
         )
+        self.regrs=regrs
+        if regrs:
+            self.regrsAct=nn.ReLU()
 
     def forward(self, x):
         x = self.features(x)
         x = self.avgpool(x)
         x = torch.flatten(x, 1)
         x = self.classifier(x)
+        if self.regrs:
+            x=self.regrsAct(x)
         return x
     
 class CNN_VAE_clf(nn.Module):
