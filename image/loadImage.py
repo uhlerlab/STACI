@@ -5,6 +5,7 @@ import matplotlib.image as mpimg
 import matplotlib.pyplot as plt
 from PIL import Image  
 Image.MAX_IMAGE_PIXELS = None
+from scipy import stats
 
 minDist=int(13/0.3)
 
@@ -396,3 +397,271 @@ def loadandsplitPlaque_overlap_regrs(plaqueImageName,plaqueSizeFactor,areaThresh
         return imTrain,imVal,imTest,labelsTrain,labelsVal,labelsTest
     else:
         return imTrain,imVal,imTest,labelsTrain,labelsVal,labelsTest,coordTrain,coordVal,coordTest
+    
+def loadandsplitPlaque_overlap_regrs_cellCluster(clusterlabels,cellCoords,minPt,plaqueImageName,plaqueSizeFactor,areaThresh,coord,cutoffradius,samplename,imagedir,diamThresh,overlap,val,test,ifFlip=False,minCutoff=6,seed=3,split=True,imagename='pi_sum.tif',minmaxscale=True,nchannels=1,returnPos=False):
+#     diamThresh=minDist*diamThresh_mul
+    imagepath=os.path.join(imagedir,samplename,'trimmed_images',imagename)
+    image=mpimg.imread(imagepath,'tif').copy()
+    print(image.shape)
+    
+    plaqueImagepath=os.path.join(imagedir,samplename,'trimmed_images',plaqueImageName)
+    plaqueImage=mpimg.imread(plaqueImagepath,'tif')[:,:,0]
+#     print(np.sum(plaqueImage[:,:,0]>0))
+        
+    if ifFlip:
+        print('flipping images')
+        if samplename=='AD_mouse9494':
+            image=np.flipud(image)
+        elif samplename=='AD_mouse9498':
+            image=np.fliplr(image)
+        elif samplename=='AD_mouse9735':
+            image=np.fliplr(image)
+            image=np.flipud(image)
+    
+    #plaque images
+    coordAll=np.zeros_like(coord)
+    imagetoClusterRes=np.zeros(coord.shape[0])
+    labelsRes=np.zeros(coord.shape[0])
+    plaqueRes=np.zeros((coord.shape[0],nchannels,diamThresh,diamThresh))
+    plaqueBinary=np.zeros_like(image)
+    radius=int(diamThresh/2)
+    idx=0
+    for c in range(coord.shape[0]):
+        centroid=coord[c]
+        if centroid[0]>=image.shape[0]:
+            print('row '+str(centroid[0]))
+        if centroid[1]>=image.shape[1]:
+            print('col '+str(centroid[1]))
+        rowstart=max(0,centroid[0]-radius)
+        rowend=min(image.shape[0],centroid[0]+radius)
+        colstart=max(0,centroid[1]-radius)
+        colend=min(image.shape[1],centroid[1]+radius)
+        
+        #find corresponding cluster
+        clusterIdxRow=np.logical_and(cellCoords[:,0]>=rowstart,cellCoords[:,0]<rowend)
+        clusterIdxCol=np.logical_and(cellCoords[:,1]>=colstart,cellCoords[:,1]<colend)
+        clusterRes=clusterlabels[np.logical_and(clusterIdxRow,clusterIdxCol)]
+        if clusterRes.size==0:
+            print('no cells')
+            continue
+        clusterResMode,modeCounts=stats.mode(clusterRes,axis=None)
+        if modeCounts[0]/clusterRes.size<minPt:
+            print('mode less than thresh')
+            continue
+        imagetoClusterRes[idx]=clusterResMode[0]
+            
+        imagerc=image[rowstart:rowend,colstart:colend]
+#         print(imagerc.shape)
+        if minmaxscale:
+            imagercmin=np.min(imagerc)
+            imagercmax=np.max(imagerc)
+            if imagercmin==imagercmax:
+                print('no cells')
+                imagerc=np.zeros_like(imagerc)
+            else:
+                imagerc=(imagerc-imagercmin)/(imagercmax-imagercmin)
+        plaqueRes[idx,:,:(rowend-rowstart),:(colend-colstart)]=imagerc.reshape((nchannels,imagerc.shape[0],imagerc.shape[1]))
+        plaqueBinary[max(0,centroid[0]-cutoffradius):min(image.shape[0],centroid[0]+cutoffradius),max(0,centroid[1]-cutoffradius):min(image.shape[1],centroid[1]+cutoffradius)]=1
+        labelsRes[idx]=np.sum(plaqueImage[rowstart:rowend,colstart:colend]>0)/plaqueSizeFactor
+        coordAll[idx]=centroid
+        idx+=1
+#         print((plaqueImage[rowstart:rowend,colstart:colend]>0).shape)
+#         print((rowend-rowstart)*(colend-colstart))
+#         labelsRes[c]=labelsRes[c]/(rowend-rowstart)/(colend-colstart)
+    plaqueRes=plaqueRes[:idx]
+    labelsRes=labelsRes[:idx]
+    imagetoClusterRes=imagetoClusterRes[:idx]
+    coordAll=coordAll[:idx]
+    plaqueCentroidBinary=np.copy(plaqueBinary)
+    
+    stride=diamThresh-overlap
+    rowSplits=int(np.floor(image.shape[0]/stride)+((image.shape[0]%stride-overlap)>(minDist*minCutoff)))
+    colSplits=int(np.floor(image.shape[1]/stride)+((image.shape[1]%stride-overlap)>(minDist*minCutoff)))
+    res=np.zeros((rowSplits*colSplits,nchannels,diamThresh,diamThresh))
+    coordNeg=np.zeros((rowSplits*colSplits,2))
+    labels=np.zeros(rowSplits*colSplits)
+    imagetoCluster=np.zeros(rowSplits*colSplits)
+    #print(rowSplits*colSplits)
+    
+    idx=0
+    for r in range(rowSplits):
+        for c in range(colSplits):
+            rowstart=r*stride
+            rowend=min((r+1)*stride+overlap,image.shape[0])
+            colstart=c*stride
+            colend=min((c+1)*stride+overlap,image.shape[1])
+            if np.sum(plaqueCentroidBinary[rowstart:rowend, colstart:colend])<areaThresh:
+                continue
+                
+            #find corresponding cluster
+            clusterIdxRow=np.logical_and(cellCoords[:,0]>=rowstart,cellCoords[:,0]<rowend)
+            clusterIdxCol=np.logical_and(cellCoords[:,1]>=colstart,cellCoords[:,1]<colend)
+            clusterRes=clusterlabels[np.logical_and(clusterIdxRow,clusterIdxCol)]
+            if clusterRes.size==0:
+                print('no cells')
+                continue
+            clusterResMode,modeCounts=stats.mode(clusterRes,axis=None)
+            if modeCounts[0]/clusterRes.size<minPt:
+                print('mode less than thresh')
+                continue
+            imagetoCluster[idx]=clusterResMode[0]
+            
+            imagerc=image[rowstart:rowend,colstart:colend]
+#             print(imagerc.shape)
+            plaqueBinary[rowstart:rowend,colstart:colend]=1
+            if minmaxscale:
+                imagercmin=np.min(imagerc)
+                imagercmax=np.max(imagerc)
+                if imagercmin==imagercmax:
+                    print('no cells')
+                    imagerc=np.zeros_like(imagerc)
+                else:
+                    imagerc=(imagerc-imagercmin)/(imagercmax-imagercmin)
+#             imagerc=np.pad(imagerc,((0,diamThresh-imagerc.shape[0]),(0,diamThresh-imagerc.shape[1])))
+            res[idx,:,:imagerc.shape[0],:imagerc.shape[1]]=imagerc.reshape((nchannels,imagerc.shape[0],imagerc.shape[1]))
+            coordNeg[idx]=np.array([r*stride+diamThresh/2,c*stride+diamThresh/2])
+            labels[idx] = np.sum(plaqueImage[rowstart:rowend,colstart:colend]>0)/plaqueSizeFactor
+#             print((plaqueImage[rowstart:rowend,colstart:colend]>0).shape)
+#             labels[idx]=labels[idx]/(rowend-rowstart)/(colend-colstart)
+#             print((rowend-rowstart)*(colend-colstart))
+            idx+=1
+    naddedplaque=idx
+    print('plaque'+str(idx+coordAll.shape[0]))
+    labelsRes=np.concatenate((labelsRes,labels[:idx]))
+    
+    for r in range(rowSplits):
+        for c in range(colSplits):
+            rowstart=r*stride
+            rowend=min((r+1)*stride+overlap,image.shape[0])
+            colstart=c*stride
+            colend=min((c+1)*stride+overlap,image.shape[1])
+            if np.sum(plaqueBinary[rowstart:rowend,colstart:colend])>0:
+                continue
+            #find corresponding cluster
+            clusterIdxRow=np.logical_and(cellCoords[:,0]>=rowstart,cellCoords[:,0]<rowend)
+            clusterIdxCol=np.logical_and(cellCoords[:,1]>=colstart,cellCoords[:,1]<colend)
+            clusterRes=clusterlabels[np.logical_and(clusterIdxRow,clusterIdxCol)]
+            if clusterRes.size==0:
+                print('no cells')
+                continue
+            clusterResMode,modeCounts=stats.mode(clusterRes,axis=None)
+            if modeCounts[0]/clusterRes.size<minPt:
+                print('mode less than thresh')
+                continue
+            imagetoCluster[idx]=clusterResMode[0]
+            
+            imagerc=image[rowstart:rowend,colstart:colend]
+#             plaqueBinary[r*stride:min((r+1)*stride+overlap,image.shape[0]),c*stride:min((c+1)*stride+overlap,image.shape[1])]=1
+            if minmaxscale:
+                imagercmin=np.min(imagerc)
+                imagercmax=np.max(imagerc)
+                if imagercmin==imagercmax:
+                    print('no cells')
+                    imagerc=np.zeros_like(imagerc)
+                else:
+                    imagerc=(imagerc-imagercmin)/(imagercmax-imagercmin)
+#             imagerc=np.pad(imagerc,((0,diamThresh-imagerc.shape[0]),(0,diamThresh-imagerc.shape[1])))
+            res[idx,:,:imagerc.shape[0],:imagerc.shape[1]]=imagerc.reshape((nchannels,imagerc.shape[0],imagerc.shape[1]))
+            coordNeg[idx]=np.array([r*stride+diamThresh/2,c*stride+diamThresh/2])
+            idx+=1
+#             plaqueRes=np.concatenate((plaqueRes,imagerc.reshape((1,nchannels,imagerc.shape[0],imagerc.shape[1]))),axis=0)
+#             coord=np.concatenate((coord,np.array([r*stride+diamThresh/2,c*stride+diamThresh/2]).reshape((1,2))),axis=0)
+    plaqueRes=np.concatenate((plaqueRes,res[:idx]),axis=0)
+    coordAll=np.concatenate((coordAll,coordNeg[:idx]),axis=0)
+    labelsRes=np.concatenate((labelsRes,np.repeat(0,idx-naddedplaque)))
+    imagetoClusterRes=np.concatenate((imagetoClusterRes,imagetoCluster[:idx]))
+    print('no plaque'+str(idx-naddedplaque))
+    
+    res=None
+    coorNeg=None
+    plaqueCentroidBinary=None
+    plaqueBinary=None
+    resAll=plaqueRes
+            
+    if not split:
+        return resAll,labels,rowSplits,colSplits
+    imTrain,imValTest,labelsTrain,labelsValTest,coordTrain,coordValTest,clusterTrain,clusterValTest = train_test_split(resAll,labelsRes,coordAll,imagetoClusterRes,test_size=val+test, random_state=seed, shuffle=True)
+    imVal,imTest,labelsVal,labelsTest,coordVal,coordTest,clusterVal,clusterTest = train_test_split(imValTest,labelsValTest,coordValTest,clusterValTest,test_size=test/(val+test), random_state=seed, shuffle=True)
+    if not returnPos:
+        return imTrain,imVal,imTest,labelsTrain,labelsVal,labelsTest
+    else:
+        return imTrain,imVal,imTest,labelsTrain,labelsVal,labelsTest,coordTrain,coordVal,coordTest,clusterTrain,clusterVal,clusterTest
+    
+def loadandsplit_cellCluster(clusterlabels,cellCoords,minPt,samplename,imagedir,diamThresh,overlap,val,test,ifFlip=True,minCutoff=6,seed=3,split=True,imagename='pi_sum.tif',minmaxscale=True,nchannels=1,clf=False,returnPos=False):
+    ###under construction
+#     diamThresh=minDist*diamThresh_mul
+    imagepath=os.path.join(imagedir,samplename,'trimmed_images',imagename)
+    image=mpimg.imread(imagepath,'tif').copy()
+    print(image.shape)
+    if len(image.shape)==3:
+        image=image[:,:,0]
+    
+    if ifFlip:
+        print('flipping images')
+        if samplename=='AD_mouse9494':
+            image=np.flipud(image)
+        elif samplename=='AD_mouse9498':
+            image=np.fliplr(image)
+        elif samplename=='AD_mouse9735':
+            image=np.fliplr(image)
+            image=np.flipud(image)
+    
+    stride=diamThresh-overlap
+    rowSplits=int(np.floor(image.shape[0]/stride)+((image.shape[0]%stride-overlap)>(minDist*minCutoff)))
+    colSplits=int(np.floor(image.shape[1]/stride)+((image.shape[1]%stride-overlap)>(minDist*minCutoff)))
+    res=np.zeros((rowSplits*colSplits,nchannels,diamThresh,diamThresh))
+    coordNeg=np.zeros((rowSplits*colSplits,2))
+    imagetoCluster=np.zeros(rowSplits*colSplits)
+    idx=0
+    
+    for r in range(rowSplits):
+        for c in range(colSplits):
+            rowstart=r*stride
+            rowend=min((r+1)*stride+overlap,image.shape[0])
+            colstart=c*stride
+            colend=min((c+1)*stride+overlap,image.shape[1])
+            
+            #find corresponding cluster
+            clusterIdxRow=np.logical_and(cellCoords[:,0]>=rowstart,cellCoords[:,0]<rowend)
+            clusterIdxCol=np.logical_and(cellCoords[:,1]>=colstart,cellCoords[:,1]<colend)
+            clusterRes=clusterlabels[np.logical_and(clusterIdxRow,clusterIdxCol)]
+            if clusterRes.size==0:
+                print('no cells')
+                continue
+            clusterResMode,modeCounts=stats.mode(clusterRes,axis=None)
+            if modeCounts[0]/clusterRes.size<minPt:
+                print('mode less than thresh')
+                continue
+            imagetoCluster[idx]=clusterResMode[0]
+           
+            imagerc=image[rowstart:rowend,colstart:colend]
+            if minmaxscale:
+                imagercmin=np.min(imagerc)
+                imagercmax=np.max(imagerc)
+                if imagercmin==imagercmax:
+                    print('no cells')
+                    imagerc=np.zeros_like(imagerc)
+                else:
+                    imagerc=(imagerc-imagercmin)/(imagercmax-imagercmin)
+            res[idx,:,:imagerc.shape[0],:imagerc.shape[1]]=imagerc.reshape((nchannels,imagerc.shape[0],imagerc.shape[1]))
+            coordNeg[idx]=np.array([r*stride+diamThresh/2,c*stride+diamThresh/2])
+            idx+=1
+    res=res[:idx]
+    coordNeg=coordNeg[:idx]
+    imagetoCluster=imagetoCluster[:idx]
+            
+#     image=None
+    if not split:
+        if not returnPos:
+            return res,rowSplits,colSplits
+        else:
+            return res,coordNeg,rowSplits,colSplits
+    imTrain,imValTest,coordTrain,coordNegValTest,clusterTrain,clusterValTest = train_test_split(res,coordNeg,imagetoCluster,test_size=val+test, random_state=seed, shuffle=True)
+    imVal,imTest,coordVal,coordTest,clusterVal,clusterTest = train_test_split(imValTest,coordNegValTest,clusterValTest,test_size=test/(val+test), random_state=seed, shuffle=True)
+    if clf:
+        if not returnPos:
+            return imTrain,imVal,imTest,np.zeros(imTrain.shape[0]),np.zeros(imVal.shape[0]),np.zeros(imTest.shape[0])
+        else:
+            return imTrain,imVal,imTest,np.zeros(imTrain.shape[0]),np.zeros(imVal.shape[0]),np.zeros(imTest.shape[0]), coordTrain,coordVal,coordTest,clusterTrain,clusterVal,clusterTest
+    else:
+        return imTrain,imVal,imTest
