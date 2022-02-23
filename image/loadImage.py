@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 from PIL import Image  
 Image.MAX_IMAGE_PIXELS = None
 from scipy import stats
+from skimage import io
 
 minDist=int(13/0.3)
 
@@ -62,6 +63,114 @@ def loadandsplit(samplename,imagedir,diamThresh,overlap,val,test,ifFlip=True,min
             return imTrain,imVal,imTest,np.zeros(imTrain.shape[0]),np.zeros(imVal.shape[0]),np.zeros(imTest.shape[0]),coordTrain,coordVal,coordTest
     else:
         return imTrain,imVal,imTest
+    
+def load_cellCentroid_plaque(plaqueImageName,coord,samplename,imagedir,diamThresh,ifFlip=False,seed=3,imagename='pi_sum.tif',minmaxscale=True,nchannels=1):
+    np.random.seed(seed)
+#     diamThresh=minDist*diamThresh_mul
+    imagepath=os.path.join(imagedir,samplename,'trimmed_images',imagename)
+    image=mpimg.imread(imagepath,'tif')
+    
+    if plaqueImageName:
+        plaqueImagepath=os.path.join(imagedir,samplename,'trimmed_images',plaqueImageName)
+        plaqueImage=mpimg.imread(plaqueImagepath,'tif')[:,:,0]
+    
+    print(image.shape)
+    if len(image.shape)==3:
+        image=image[:,:,0]
+            
+    if ifFlip==True:
+        print('flipping images')
+        if samplename=='AD_mouse9494':
+            image=np.flipud(image)
+        elif samplename=='AD_mouse9498':
+            image=np.fliplr(image)
+        elif samplename=='AD_mouse9735':
+            image=np.fliplr(image)
+            image=np.flipud(image)
+    
+    res=np.zeros((coord.shape[0],nchannels,diamThresh,diamThresh))
+    labelsRes=np.zeros(coord.shape[0])
+    radius=int(diamThresh/2)
+    for c in range(coord.shape[0]):
+        centroid=coord[c]
+        if centroid[0]>=image.shape[0]:
+            print('row '+str(centroid[0]))
+        if centroid[1]>=image.shape[1]:
+            print('col '+str(centroid[1]))
+        rowstart=max(0,centroid[0]-radius)
+        rowEnd=min(image.shape[0],centroid[0]+radius)
+        colstart=max(0,centroid[1]-radius)
+        colEnd=min(image.shape[1],centroid[1]+radius)
+        imagerc=image[rowstart:rowEnd,colstart:colEnd]
+        if minmaxscale:
+            imagercmin=np.min(imagerc)
+            imagercmax=np.max(imagerc)
+            if imagercmin==imagercmax:
+                print('no cells')
+                imagerc=np.zeros_like(imagerc)
+            else:
+                imagerc=(imagerc-imagercmin)/(imagercmax-imagercmin)
+        res[c,:,:(rowEnd-rowstart),:(colEnd-colstart)]=imagerc.reshape((nchannels,imagerc.shape[0],imagerc.shape[1]))
+        if plaqueImageName:
+            labelsRes[c]=np.sum(plaqueImage[rowstart:rowEnd,colstart:colEnd]>0)
+#     image=None
+    if ifFlip=='randomize':
+        groupsize=int(res.shape[0]/8)
+        rdmIdx=np.arange(res.shape[0])
+        np.random.shuffle(rdmIdx)
+        res[:groupsize]=np.flip(res[:groupsize],axis=3)
+        res[rdmIdx[groupsize:groupsize*2]]=np.flip(res[rdmIdx[groupsize:groupsize*2]],axis=2)
+        res[rdmIdx[groupsize*2:groupsize*3]]=np.flip(res[rdmIdx[groupsize*2:groupsize*3]],axis=(2,3))
+        res[rdmIdx[groupsize*3:groupsize*4]]=np.rot90(res[rdmIdx[groupsize*3:groupsize*4]],axes=(2,3))
+        res[rdmIdx[groupsize*4:groupsize*5]]=np.flip(np.rot90(res[rdmIdx[groupsize*4:groupsize*5]],axes=(2,3)),axis=2)
+        res[rdmIdx[groupsize*5:groupsize*6]]=np.flip(np.rot90(res[rdmIdx[groupsize*5:groupsize*6]],axes=(2,3)),axis=3)
+        res[rdmIdx[groupsize*6:groupsize*7]]=np.flip(np.rot90(res[rdmIdx[groupsize*6:groupsize*7]],axes=(2,3)),axis=(2,3))
+    return res,labelsRes
+
+def load_cellCentroid(coord,samplename,imagedir,diamThresh,ifFlip=False,seed=3,imagename='pi_sum.tif',minmaxscale=True,nchannels=1,addDir='/trimmed_images/'):
+#     diamThresh=minDist*diamThresh_mul
+    imagepath=os.path.join(imagedir,samplename+addDir+imagename)
+#     image=mpimg.imread(imagepath,'tif').copy()
+    image=io.imread(imagepath)
+    print(image.shape)
+    if len(image.shape)==3:
+        image=image[:,:,0]
+    
+    if ifFlip:
+        print('flipping images')
+        if samplename=='AD_mouse9494':
+            image=np.flipud(image)
+        elif samplename=='AD_mouse9498':
+            image=np.fliplr(image)
+        elif samplename=='AD_mouse9735':
+            image=np.fliplr(image)
+            image=np.flipud(image)
+    
+    res=np.zeros((coord.shape[0],nchannels,diamThresh,diamThresh))
+    radius=int(diamThresh/2)
+    for c in range(coord.shape[0]):
+        centroid=coord[c]
+        if centroid[0]>=image.shape[0]:
+            print('row '+str(centroid[0]))
+        if centroid[1]>=image.shape[1]:
+            print('col '+str(centroid[1]))
+        rowstart=max(0,centroid[0]-radius)
+        rowEnd=min(image.shape[0],centroid[0]+radius)
+        colstart=max(0,centroid[1]-radius)
+        colEnd=min(image.shape[1],centroid[1]+radius)
+        imagerc=image[rowstart:rowEnd,colstart:colEnd]
+        if minmaxscale:
+            imagercmin=np.min(imagerc)
+            imagercmax=np.max(imagerc)
+            if imagercmin==imagercmax:
+                print('no cells')
+                imagerc=np.zeros_like(imagerc)
+            else:
+                imagerc=(imagerc-imagercmin)/(imagercmax-imagercmin)
+        res[c,:,:(rowEnd-rowstart),:(colEnd-colstart)]=imagerc.reshape((nchannels,imagerc.shape[0],imagerc.shape[1]))
+#     image=None
+    return res
+    
 def loadandsplitPlaque(coord,cutoffradius,samplename,imagedir,diamThresh,overlap,val,test,ifFlip=False,minCutoff=6,seed=3,split=True,imagename='pi_sum.tif',minmaxscale=True,nchannels=1,returnPos=False):
 #     diamThresh=minDist*diamThresh_mul
     imagepath=os.path.join(imagedir,samplename,'trimmed_images',imagename)

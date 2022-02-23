@@ -27,6 +27,7 @@ def preprocess_graph(adj):
     adj = sp.coo_matrix(adj)
     adj_ = adj + sp.eye(adj.shape[0])
     rowsum = np.array(adj_.sum(1))
+    print(np.sum(rowsum==0))
     degree_mat_inv_sqrt = sp.diags(np.power(rowsum, -0.5).flatten())
     adj_normalized = adj_.dot(degree_mat_inv_sqrt).transpose().dot(degree_mat_inv_sqrt).tocoo()
     return sparse_mx_to_torch_sparse_tensor(adj_normalized)
@@ -121,7 +122,6 @@ def mask_test_edges(adj,crossVal,ncrossVal=3,testSize=0.1,valSize=0.05):
         adj_train = sp.csr_matrix((data, (train_edges[:, 0], train_edges[:, 1])), shape=adj.shape)
         adj_train = adj_train + adj_train.T
 
-        # NOTE: these edge lists only contain single direction of edge!
         return adj_train, train_edges, val_edges, val_edges_false, test_edges, test_edges_false
     
     all_edge_idx = list(range(edges.shape[0]))
