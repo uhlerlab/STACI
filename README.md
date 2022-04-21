@@ -1,6 +1,7 @@
 # STACI
 
 All models are stored in "image" and "gae".
+
 Training script for graph convolutional autoencoder: train_gae_starmap_multisamples.ipynb
 Training script for joint latent space: train_jointGAEcnn_starmap_multisamples.ipynb
 Plotting GAE latent space: plotEmbedding_Starmap.ipynb
