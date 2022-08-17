@@ -15,3 +15,9 @@ Translation from joint latent space to gene expression: translation_jointCNNgae2
 Analyzing the results of regression of plaque size from joint latent space: plotRegrsFromJoint_starmap_3Dseg.ipynb
 
 Nuclei segmentation: segment3D_gpu.ipynb
+
+Validation with 10x Visium data of mouse brain coronal sections: notebooks labeled with "10xADFFPE"
+
+Testing overparameterization on scRNA-seq data to remove batch effects: notebooks labeled with "scrnaseq"
+
+Validation on the four held-out STARmap samples: notebooks labeled with "newdata"
