@@ -1,5 +1,19 @@
 # STACI
 
+Package versions:
+- Python 3.10.4
+- pytorch 1.9.1
+- scanpy 1.9.1
+- scipy 1.7.3
+- numpy 1.22.4
+- scikit-learn 1.1.2
+- matplotlib-base 3.5.2
+- matplotlib 3.5.2
+- seaborn 0.11.2
+- pandas 1.4.3
+- umap-learn 0.5.3
+- anndata 0.8.0
+
 All models are stored in "image" and "gae".
 
 Training script for graph convolutional autoencoder: train_gae_starmap_multisamples.ipynb
