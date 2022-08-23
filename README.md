@@ -31,6 +31,7 @@ Analyzing the results of regression of plaque size from joint latent space: plot
 Nuclei segmentation: segment3D_gpu.ipynb
 
 Validation with 10x Visium data of mouse brain coronal sections: notebooks labeled with "10xADFFPE"
+  - The 10x Visium data can be accessed via this link: https://www.10xgenomics.com/resources/datasets/multiomic-integration-neuroscience-application-note-visium-for-ffpe-plus-immunofluorescence-alzheimers-disease-mouse-model-brain-coronal-sections-from-one-hemisphere-over-a-time-course-1-standard
 
 Testing overparameterization on scRNA-seq data to remove batch effects: notebooks labeled with "scrnaseq"
 
