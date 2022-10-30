@@ -127,6 +127,29 @@ def load_cellCentroid_plaque(plaqueImageName,coord,samplename,imagedir,diamThres
         res[rdmIdx[groupsize*6:groupsize*7]]=np.flip(np.rot90(res[rdmIdx[groupsize*6:groupsize*7]],axes=(2,3)),axis=(2,3))
     return res,labelsRes
 
+def load_cellCentroid_plaqueOnly(plaqueImageName,coord,samplename,imagedir,diamThresh,ifFlip=False,seed=3,imagename='pi_sum.tif',minmaxscale=True,nchannels=1):
+    np.random.seed(seed)
+    
+    if plaqueImageName:
+        plaqueImagepath=os.path.join(imagedir,samplename,'trimmed_images',plaqueImageName)
+        plaqueImage=mpimg.imread(plaqueImagepath,'tif')[:,:,0]
+    
+    labelsRes=np.zeros(coord.shape[0])
+    radius=int(diamThresh/2)
+    for c in range(coord.shape[0]):
+        centroid=coord[c]
+        if centroid[0]>=plaqueImage.shape[0]:
+            print('row '+str(centroid[0]))
+        if centroid[1]>=plaqueImage.shape[1]:
+            print('col '+str(centroid[1]))
+        rowstart=max(0,centroid[0]-radius)
+        rowEnd=min(plaqueImage.shape[0],centroid[0]+radius)
+        colstart=max(0,centroid[1]-radius)
+        colEnd=min(plaqueImage.shape[1],centroid[1]+radius)
+        if plaqueImageName:
+            labelsRes[c]=np.sum(plaqueImage[rowstart:rowEnd,colstart:colEnd]>0)
+    return labelsRes
+
 def load_cellCentroid(coord,samplename,imagedir,diamThresh,ifFlip=False,seed=3,imagename='pi_sum.tif',minmaxscale=True,nchannels=1,addDir='/trimmed_images/'):
 #     diamThresh=minDist*diamThresh_mul
     imagepath=os.path.join(imagedir,samplename+addDir+imagename)
