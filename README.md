@@ -1,5 +1,7 @@
 # STACI
 
+Please note that the "useA" parameter in the training notebook need to be set to True, if using spatial locations of cells/spots is desired. Setting useA=False trains the autoencoder with only gene expression.
+
 Package versions:
 - Python 3.10.4
 - pytorch 1.9.1
